@@ -1,5 +1,6 @@
 from typing import Any, Callable, Dict, List, Optional, Union
 import collections
+import collections.abc
 from collections import defaultdict
 import copy
 import os
@@ -31,7 +32,7 @@ def merge_dicts(*dicts: dict) -> dict:
             if (
                 k in dict_
                 and isinstance(dict_[k], dict)
-                and isinstance(merge_dict[k], collections.Mapping)
+                and isinstance(merge_dict[k], collections.abc.Mapping)
             ):
                 dict_[k] = merge_dicts(dict_[k], merge_dict[k])
             else:

@@ -7,6 +7,8 @@ import numpy as np
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 import timm
 
+from geoseg.models.FineOptimizationModule import FineOptimizationModule
+
 class Mlp(nn.Module):
     """ Multilayer perceptron."""
 
@@ -942,24 +944,28 @@ class FTUNetFormer(nn.Module):
                  num_heads=(3, 6, 12, 24),
                  freeze_stages=-1,
                  window_size=8,
-                 num_classes=6
+                 num_classes=6,
+                 fom=False
                  ):
         super().__init__()
 
         self.backbone = SwinTransformer(embed_dim=embed_dim, depths=depths, num_heads=num_heads, frozen_stages=freeze_stages)
         encoder_channels = [embed_dim, embed_dim*2, embed_dim*4, embed_dim*8]
         self.decoder = Decoder(encoder_channels, decode_channels, dropout, window_size, num_classes)
+        self.fom = FineOptimizationModule(input_channels=num_classes) if fom else None
 
     def forward(self, x):
         h, w = x.size()[-2:]
         res1, res2, res3, res4 = self.backbone(x)
         x = self.decoder(res1, res2, res3, res4, h, w)
+        if self.fom is not None:
+            x = self.fom(x)
         return x
 
 
 def ft_unetformer(pretrained=True, num_classes=6, freeze_stages=-1, decoder_channels=256,
-                  weight_path='pretrain_weights/stseg_base.pth'):
-    model = FTUNetFormer(num_classes=num_classes,
+                  weight_path='pretrain_weights/stseg_base.pth', fom=False):
+    model = FTUNetFormer(num_classes=num_classes, fom=fom,
                          freeze_stages=freeze_stages,
                          embed_dim=128,
                          depths=(2, 2, 18, 2),

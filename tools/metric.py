@@ -26,9 +26,8 @@ class Evaluator(object):
 
     def F1(self):
         tp, fp, tn, fn = self.get_tp_fp_tn_fn()
-        Precision = tp / (tp + fp)
-        Recall = tp / (tp + fn)
-        F1 = (2.0 * Precision * Recall) / (Precision + Recall)
+        # 2PR / (P + R) written as 2TP / (2TP + FP + FN): 0 instead of NaN when a class is never predicted
+        F1 = 2.0 * tp / np.maximum(2.0 * tp + fp + fn, self.eps)
         return F1
 
     def OA(self):

@@ -5,6 +5,8 @@ from torchvision import models
 from torch.nn import Module, Conv2d, Parameter, Softmax
 from collections import OrderedDict
 
+from geoseg.models.FineOptimizationModule import FineOptimizationModule
+
 
 def conv3otherRelu(in_planes, out_planes, kernel_size=None, stride=None, padding=None):
     # 3x3 convolution with padding and relu
@@ -226,10 +228,12 @@ class A2FPN(nn.Module):
             pyramid_channels=64,
             segmentation_channels=64,
             dropout=0.2,
+            pretrained=True,
+            fom=False,
     ):
         super().__init__()
         self.name = 'A2FPN'
-        self.base_model = models.resnet18(pretrained=True)
+        self.base_model = models.resnet18(weights='IMAGENET1K_V1' if pretrained else None)
         self.base_layers = list(self.base_model.children())
         # ==> encoder layers
         self.layer_down0 = nn.Sequential(*self.base_layers[:3])  # size=(N, 64, x.H/2, x.W/2)
@@ -252,6 +256,7 @@ class A2FPN(nn.Module):
         self.attention = AttentionAggregationModule(segmentation_channels * 4, segmentation_channels * 4)
         self.final_conv = nn.Conv2d(segmentation_channels * 4, class_num, kernel_size=1, padding=0)
         self.dropout = nn.Dropout2d(p=dropout, inplace=True)
+        self.fom = FineOptimizationModule(input_channels=class_num) if fom else None
 
     def forward(self, x):
         # ==> get encoder features
@@ -275,6 +280,8 @@ class A2FPN(nn.Module):
         out = self.dropout(self.attention(s5, s4, s3, s2))
         out = self.final_conv(out)
         out = F.interpolate(out, scale_factor=4, mode='bilinear', align_corners=True)
+        if self.fom is not None:
+            out = self.fom(out)
 
         return out
 

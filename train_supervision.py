@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from tools.cfg import py2cfg
 import os
 import torch
@@ -79,6 +79,9 @@ class Supervision_Train(pl.LightningModule):
         elif 'cropland' in self.config.log_name:
             mIoU = np.nanmean(self.metrics_train.Intersection_over_Union()[:-1])
             F1 = np.nanmean(self.metrics_train.F1()[:-1])
+        elif 'pv' in self.config.log_name:
+            mIoU = np.nanmean(self.metrics_train.Intersection_over_Union()[:-1])
+            F1 = np.nanmean(self.metrics_train.F1()[:-1])
         else:
             mIoU = np.nanmean(self.metrics_train.Intersection_over_Union())
             F1 = np.nanmean(self.metrics_train.F1())
@@ -123,6 +126,9 @@ class Supervision_Train(pl.LightningModule):
             mIoU = np.nanmean(self.metrics_val.Intersection_over_Union()[:-1])
             F1 = np.nanmean(self.metrics_val.F1()[:-1])
         elif 'cropland' in self.config.log_name:
+            mIoU = np.nanmean(self.metrics_val.Intersection_over_Union()[:-1])
+            F1 = np.nanmean(self.metrics_val.F1()[:-1])
+        elif 'pv' in self.config.log_name:
             mIoU = np.nanmean(self.metrics_val.Intersection_over_Union()[:-1])
             F1 = np.nanmean(self.metrics_val.F1()[:-1])
         else:
@@ -170,6 +176,10 @@ def main():
                                           save_last=config.save_last, mode=config.monitor_mode,
                                           dirpath=config.weights_path,
                                           filename=config.weights_name)
+    callbacks = [checkpoint_callback]
+    if config.get('early_stopping_patience'):
+        callbacks.append(EarlyStopping(monitor=config.monitor, mode=config.monitor_mode,
+                                       patience=config.early_stopping_patience))
     logger = CSVLogger('lightning_logs', name=config.log_name)
 
     model = Supervision_Train(config)
@@ -178,7 +188,7 @@ def main():
 
     trainer = pl.Trainer(devices=config.gpus, max_epochs=config.max_epoch, accelerator='auto',
                          check_val_every_n_epoch=config.check_val_every_n_epoch,
-                         callbacks=[checkpoint_callback], strategy='auto',
+                         callbacks=callbacks, strategy='auto',
                          logger=logger)
     trainer.fit(model=model, ckpt_path=config.resume_ckpt_path)
 

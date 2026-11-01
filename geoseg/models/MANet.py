@@ -8,6 +8,8 @@ import timm
 
 from functools import partial
 
+from geoseg.models.FineOptimizationModule import FineOptimizationModule
+
 
 nonlinearity = partial(F.relu, inplace=True)
 
@@ -131,7 +133,7 @@ class DecoderBlock(nn.Module):
 
 
 class MANet(nn.Module):
-    def __init__(self, num_channels=3, num_classes=5, backbone_name='resnet50', pretrained=True):
+    def __init__(self, num_channels=3, num_classes=5, backbone_name='resnet50', pretrained=True, fom=False):
         super(MANet, self).__init__()
         self.name = 'MANet'
 
@@ -154,6 +156,7 @@ class MANet(nn.Module):
         self.finalconv2 = nn.Conv2d(32, 32, 3, padding=1)
         self.finalrelu2 = nonlinearity
         self.finalconv3 = nn.Conv2d(32, num_classes, 3, padding=1)
+        self.fom = FineOptimizationModule(input_channels=num_classes) if fom else None
 
     def forward(self, x):
         # Encoder
@@ -172,5 +175,7 @@ class MANet(nn.Module):
         out = self.finalconv2(out)
         out = self.finalrelu2(out)
         out = self.finalconv3(out)
+        if self.fom is not None:
+            out = self.fom(out)
 
         return out

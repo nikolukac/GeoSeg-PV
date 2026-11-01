@@ -6,6 +6,8 @@ from einops import rearrange, repeat
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 import timm
 
+from geoseg.models.FineOptimizationModule import FineOptimizationModule
+
 
 class ConvBNReLU(nn.Sequential):
     def __init__(self, in_channels, out_channels, kernel_size=3, dilation=1, stride=1, norm_layer=nn.BatchNorm2d, bias=False):
@@ -355,7 +357,8 @@ class UNetFormer(nn.Module):
                  backbone_name='swsl_resnet18',
                  pretrained=True,
                  window_size=8,
-                 num_classes=6
+                 num_classes=6,
+                 fom=False
                  ):
         super().__init__()
 
@@ -364,13 +367,18 @@ class UNetFormer(nn.Module):
         encoder_channels = self.backbone.feature_info.channels()
 
         self.decoder = Decoder(encoder_channels, decode_channels, dropout, window_size, num_classes)
+        self.fom = FineOptimizationModule(input_channels=num_classes) if fom else None
 
     def forward(self, x):
         h, w = x.size()[-2:]
         res1, res2, res3, res4 = self.backbone(x)
         if self.training:
             x, ah = self.decoder(res1, res2, res3, res4, h, w)
+            if self.fom is not None:
+                x = self.fom(x)
             return x, ah
         else:
             x = self.decoder(res1, res2, res3, res4, h, w)
+            if self.fom is not None:
+                x = self.fom(x)
             return x

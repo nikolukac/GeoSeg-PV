@@ -5,6 +5,8 @@ import torch.utils.checkpoint as checkpoint
 import numpy as np
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
+from geoseg.models.FineOptimizationModule import FineOptimizationModule
+
 
 class MaxPoolLayer(nn.Sequential):
     def __init__(self, kernel_size=3, dilation=1, stride=1):
@@ -903,25 +905,30 @@ class DCSwin(nn.Module):
                  embed_dim=128,
                  depths=(2, 2, 18, 2),
                  num_heads=(4, 8, 16, 32),
-                 frozen_stages=2):
+                 frozen_stages=2,
+                 fom=False):
         super(DCSwin, self).__init__()
         self.backbone = SwinTransformer(embed_dim=embed_dim, depths=depths, num_heads=num_heads, frozen_stages=frozen_stages)
         self.decoder = Decoder(encoder_channels, dropout, atrous_rates, num_classes)
+        self.fom = FineOptimizationModule(input_channels=num_classes) if fom else None
 
     def forward(self, x):
         x1, x2, x3, x4 = self.backbone(x)
         x = self.decoder(x1, x2, x3, x4)
+        if self.fom is not None:
+            x = self.fom(x)
         return x
 
 
-def dcswin_base(pretrained=True, num_classes=4, weight_path='pretrain_weights/stseg_base.pth'):
+def dcswin_base(pretrained=True, num_classes=4, weight_path='pretrain_weights/stseg_base.pth', fom=False):
     # pretrained weights are load from official repo of Swin Transformer
     model = DCSwin(encoder_channels=(128, 256, 512, 1024),
                    num_classes=num_classes,
                    embed_dim=128,
                    depths=(2, 2, 18, 2),
                    num_heads=(4, 8, 16, 32),
-                   frozen_stages=2)
+                   frozen_stages=2,
+                   fom=fom)
     if pretrained and weight_path is not None:
         old_dict = torch.load(weight_path)['state_dict']
         model_dict = model.state_dict()
@@ -931,13 +938,14 @@ def dcswin_base(pretrained=True, num_classes=4, weight_path='pretrain_weights/st
     return model
 
 
-def dcswin_small(pretrained=True, num_classes=4, weight_path='pretrain_weights/stseg_small.pth'):
+def dcswin_small(pretrained=True, num_classes=4, weight_path='pretrain_weights/stseg_small.pth', fom=False):
     model = DCSwin(encoder_channels=(96, 192, 384, 768),
                    num_classes=num_classes,
                    embed_dim=96,
                    depths=(2, 2, 18, 2),
                    num_heads=(3, 6, 12, 24),
-                   frozen_stages=2)
+                   frozen_stages=2,
+                   fom=fom)
     if pretrained and weight_path is not None:
         old_dict = torch.load(weight_path)['state_dict']
         model_dict = model.state_dict()

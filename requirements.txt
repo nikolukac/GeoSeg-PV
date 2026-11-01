@@ -12,3 +12,5 @@ einops
 addict
 ftfy
 regex
+safetensors
+rasterio

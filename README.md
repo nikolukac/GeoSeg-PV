@@ -1,325 +1,157 @@
-## Version 2.0 (stable)
+# GeoSeg-PV
 
-[Welcome to my homepage!](https://WangLibo1995.github.io)
+Detection of individual photovoltaic (PV) modules in very high resolution (VHR) satellite imagery.
 
-## News 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/transformer-meets-dcfam-a-novel-semantic/semantic-segmentation-on-isprs-potsdam)](https://paperswithcode.com/sota/semantic-segmentation-on-isprs-potsdam?p=transformer-meets-dcfam-a-novel-semantic)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/transformer-meets-dcfam-a-novel-semantic/semantic-segmentation-on-isprs-vaihingen)](https://paperswithcode.com/sota/semantic-segmentation-on-isprs-vaihingen?p=transformer-meets-dcfam-a-novel-semantic)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/efficient-hybrid-transformer-learning-global/semantic-segmentation-on-uavid)](https://paperswithcode.com/sota/semantic-segmentation-on-uavid?p=efficient-hybrid-transformer-learning-global)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/efficient-hybrid-transformer-learning-global/semantic-segmentation-on-loveda)](https://paperswithcode.com/sota/semantic-segmentation-on-loveda?p=efficient-hybrid-transformer-learning-global)
+GeoSeg-PV is a fork of [GeoSeg](https://github.com/WangLibo1995/GeoSeg) by Libo Wang (its README is kept as [README_GeoSeg.md](README_GeoSeg.md)). It adds a binary PV module segmentation task to GeoSeg: the dataset loader, 20 configurations (10 networks, each with and without a Fine Optimization Module), released weights and tools for inference and evaluation. It is the reference implementation of the module detection in
 
-- The code of [PyramidMamba](./geoseg/models/PyramidMamba.py) is released.
-- I have updated this repo to pytorch 2.0 and pytorch-lightning 2.0, support multi-gpu training, etc. 
-- Pretrained Weights of backbones can be access from [Google Drive](https://drive.google.com/drive/folders/1ELpFKONJZbXmwB5WCXG7w42eHtrXzyPn?usp=sharing)
-- [UNetFormer](https://www.sciencedirect.com/science/article/pii/S0924271622001654) (accepted by ISPRS, [PDF](https://www.researchgate.net/profile/Libo-Wang-17/publication/361736439_UNetFormer_A_UNet-like_transformer_for_efficient_semantic_segmentation_of_remote_sensing_urban_scene_imagery/links/62c2a1ed1cbf3a1d12ac1c87/UNetFormer-A-UNet-like-transformer-for-efficient-semantic-segmentation-of-remote-sensing-urban-scene-imagery.pdf)) and **UAVid dataset** are supported.
-- ISPRS Vaihingen and Potsdam datasets are supported. Since private sharing is not allowed, you need to download the datasets from the official website and split them by **Folder Structure**.
-- More networks are updated and the link of pretrained weights is provided.
-- **config/loveda/dcswin.py** provides a detailed explain about **config** setting.
-- Inference on huge RS images are supported (inference_huge_image.py).
+> N. Lukač, S. Seme, K. Sredenšek, G. Štumberger, D. Mongus, B. Žalik, M. Bizjak. **Detection and Optimization of Photovoltaic Arrays' Tilt Angles Using Remote Sensing Data.** *Applied Sciences* 15(7), 3598, 2025. https://doi.org/10.3390/app15073598
 
-## Introduction
+![Errors of FT-UNetFormer + FOM on the 8 test tiles of split 0](example/output/overview.png)
 
-**GeoSeg** is an open-source  semantic segmentation toolbox based on PyTorch, [pytorch lightning](https://www.pytorchlightning.ai/) and [timm](https://github.com/rwightman/pytorch-image-models), 
-which mainly focuses on developing advanced Vision Transformers for remote sensing image segmentation.
+*FT-UNetFormer + FOM on the test tiles of split 0 (white: detected PV, magenta: false detections, cyan: missed PV). The imagery is not shown because it may not be redistributed. See [Example](#example).*
 
+## Models
 
-## Major Features
+All networks predict two classes (0 = PV, 1 = background) for 512 × 512 RGB patches. Optionally the logits are refined by a Fine Optimization Module (FOM), a small U-shaped network after PVNet (Wang et al., 2023) in [geoseg/models/FineOptimizationModule.py](geoseg/models/FineOptimizationModule.py). F1 and IoU are those of the PV class on the test tiles, as the mean of five random splits (± standard deviation over the splits).
 
-- Unified Benchmark
+| Network | Encoder | Parameters [M] | F1 −FOM | IoU −FOM | F1 +FOM | IoU +FOM | Config |
+|---|---|---|---|---|---|---|---|
+| BANet | ResT-Lite | 12.7 | 0.927 ± 0.018 | 0.864 ± 0.031 | 0.937 ± 0.015 | 0.882 ± 0.026 | `banet` |
+| A2-FPN | ResNet-18 | 12.2 | 0.898 ± 0.005 | 0.815 ± 0.009 | 0.934 ± 0.010 | 0.876 ± 0.018 | `a2fpn` |
+| MANet | ResNet-18 | 12.0 | 0.922\* | 0.855\* | 0.941 ± 0.007 | 0.889 ± 0.012 | `manet_r18` |
+| MANet | EfficientNet-B5 | 28.0 | 0.942\* | 0.890\* | 0.949 ± 0.010 | 0.904 ± 0.019 | `manet_effb5` |
+| MANet | SE-ResNeXt26d-32x4d | 27.1 | 0.947\* | 0.900\* | 0.948 ± 0.010 | 0.901 ± 0.018 | `manet_seresnext26d` |
+| DCSwin | Swin-S | 66.9 | 0.899 ± 0.005 | 0.817 ± 0.008 | 0.934 ± 0.009 | 0.876 ± 0.015 | `dcswin` |
+| UNetFormer | ResNet-18 | 11.7 | 0.905 ± 0.007 | 0.827 ± 0.012 | 0.939 ± 0.012 | 0.886 ± 0.022 | `unetformer_r18` |
+| UNetFormer | EfficientNet-B5 | 27.8 | 0.914 ± 0.005 | 0.842 ± 0.009 | 0.948 ± 0.008 | 0.901 ± 0.014 | `unetformer_effb5` |
+| UNetFormer | SE-ResNeXt26d-32x4d | 15.5 | 0.911 ± 0.007 | 0.837 ± 0.012 | 0.942 ± 0.018 | 0.891 ± 0.031 | `unetformer_seresnext26d` |
+| **FT-UNetFormer** | Swin-B | 96.0 | 0.915 ± 0.006 | 0.843 ± 0.011 | **0.952 ± 0.008** | **0.908 ± 0.014** | `ftunetformer` |
 
-  we provide a unified training script for various segmentation methods.
-  
-- Simple and Effective
+The FOM adds 0.41 M parameters. The config of a network with FOM has the suffix `_fom` (e.g. `config/pv/ftunetformer_fom.py`).
 
-  Thanks to **pytorch lightning** and **timm** , the code is easy for further development.
-  
-- Supported Remote Sensing Datasets
- 
-  - [ISPRS Vaihingen and Potsdam](https://www.isprs.org/education/benchmarks/UrbanSemLab/default.aspx) 
-  - [UAVid](https://uavid.nl/)
-  - [LoveDA](https://codalab.lisn.upsaclay.fr/competitions/421)
-  - [OpenEarthMap](https://open-earth-map.org/)
-  - More datasets will be supported in the future.
-  
-- Multi-scale Training and Testing
-- Inference on Huge Remote Sensing Images
-
-## Supported Networks
-
-- Mamba
-
-  - [PyramidMamba](https://arxiv.org/abs/2406.10828)
-
-- Vision Transformer
-
-  - [UNetFormer](https://authors.elsevier.com/a/1fIji3I9x1j9Fs) 
-  - [DC-Swin](https://ieeexplore.ieee.org/abstract/document/9681903)
-  - [BANet](https://www.mdpi.com/2072-4292/13/16/3065)
-  
-- CNN
- 
-  - [MANet](https://ieeexplore.ieee.org/abstract/document/9487010) 
-  - [ABCNet](https://www.sciencedirect.com/science/article/pii/S0924271621002379)
-  - [A2FPN](https://www.tandfonline.com/doi/full/10.1080/01431161.2022.2030071)
-  
-## Folder Structure
-
-Prepare the following folders to organize this repo:
-```none
-airs
-├── GeoSeg (code)
-├── pretrain_weights (pretrained weights of backbones, such as vit, swin, etc)
-├── model_weights (save the model weights trained on ISPRS vaihingen, LoveDA, etc)
-├── fig_results (save the masks predicted by models)
-├── lightning_logs (CSV format training logs)
-├── data
-│   ├── LoveDA
-│   │   ├── Train
-│   │   │   ├── Urban
-│   │   │   │   ├── images_png (original images)
-│   │   │   │   ├── masks_png (original masks)
-│   │   │   │   ├── masks_png_convert (converted masks used for training)
-│   │   │   │   ├── masks_png_convert_rgb (original rgb format masks)
-│   │   │   ├── Rural
-│   │   │   │   ├── images_png 
-│   │   │   │   ├── masks_png 
-│   │   │   │   ├── masks_png_convert
-│   │   │   │   ├── masks_png_convert_rgb
-│   │   ├── Val (the same with Train)
-│   │   ├── Test
-│   │   ├── train_val (Merge Train and Val)
-│   ├── uavid
-│   │   ├── uavid_train (original)
-│   │   ├── uavid_val (original)
-│   │   ├── uavid_test (original)
-│   │   ├── uavid_train_val (Merge uavid_train and uavid_val)
-│   │   ├── train (processed)
-│   │   ├── val (processed)
-│   │   ├── train_val (processed)
-│   ├── vaihingen
-│   │   ├── train_images (original)
-│   │   ├── train_masks (original)
-│   │   ├── test_images (original)
-│   │   ├── test_masks (original)
-│   │   ├── test_masks_eroded (original)
-│   │   ├── train (processed)
-│   │   ├── test (processed)
-│   ├── potsdam (the same with vaihingen)
-```
+Released weights: 5 per configuration (one per split), as `<config>/fold<k>.safetensors`, for all configurations except MANet without FOM (\*: these values are from the paper, the weights were not kept). Every released file was re-evaluated and gives the published test result of its split. Hugging Face: *link will be added*.
 
 ## Install
 
-Open the folder **airs** using **Linux Terminal** and create python environment:
-```
-conda create -n airs python=3.8
-conda activate airs
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install -r GeoSeg/requirements.txt
+```bash
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+pip install -r requirements.txt
 ```
 
-Install Mamba
-```
-pip install causal-conv1d>=1.4.0
-pip install mamba-ssm
+Tested with Python 3.11, PyTorch 2.11 (CUDA 12.6), timm 0.9.2, pytorch-lightning 2.4.0 and albumentations 1.4.13 on Windows 11. Run all commands from the repository folder. Training additionally needs the ImageNet weights of the Swin and ResT backbones in `pretrain_weights/` (see [README_GeoSeg.md](README_GeoSeg.md#pretrained-weights-of-backbones)). Inference with released weights does not.
+
+## Detect PV modules in your images
+
+```bash
+python pv_inference.py -i image.tif -w ftunetformer_fom/fold0.safetensors -o output --prob
 ```
 
-## Pretrained Weights of Backbones
+- Input: 8-bit RGB GeoTIFF, PNG or JPEG of any size. It is processed in 512 × 512 patches with 128 pixels overlap, and overlapping predictions are blended.
+- Output: `<name>_pv.tif` (PV = 255) on the grid of the input, and with `--prob` the PV probability (0 to 255). Plain images give PNG.
+- Several `-w` files are averaged (an ensemble, e.g. the five splits of one configuration).
+- The models were trained on Google satellite imagery resampled to a ground sampling distance (GSD) of about 0.1 m (0.096 to 0.099 m). For a georeferenced input with another GSD, `--gsd 0.1` resamples it before prediction.
 
-[Baidu Disk](https://pan.baidu.com/s/1foJkxeUZwVi5SnKNpn6hfg) : 1234 
+In Python:
 
-[Google Drive](https://drive.google.com/drive/folders/1ELpFKONJZbXmwB5WCXG7w42eHtrXzyPn?usp=sharing)
-
-## Data Preprocessing
-
-Download the datasets from the official website and split them yourself.
-
-**Vaihingen**
-
-Generate the training set.
-```
-python GeoSeg/tools/vaihingen_patch_split.py \
---img-dir "data/vaihingen/train_images" \
---mask-dir "data/vaihingen/train_masks" \
---output-img-dir "data/vaihingen/train/images_1024" \
---output-mask-dir "data/vaihingen/train/masks_1024" \
---mode "train" --split-size 1024 --stride 512 
-```
-Generate the testing set.
-```
-python GeoSeg/tools/vaihingen_patch_split.py \
---img-dir "data/vaihingen/test_images" \
---mask-dir "data/vaihingen/test_masks_eroded" \
---output-img-dir "data/vaihingen/test/images_1024" \
---output-mask-dir "data/vaihingen/test/masks_1024" \
---mode "val" --split-size 1024 --stride 1024 \
---eroded
-```
-Generate the masks_1024_rgb (RGB format ground truth labels) for visualization.
-```
-python GeoSeg/tools/vaihingen_patch_split.py \
---img-dir "data/vaihingen/test_images" \
---mask-dir "data/vaihingen/test_masks" \
---output-img-dir "data/vaihingen/test/images_1024" \
---output-mask-dir "data/vaihingen/test/masks_1024_rgb" \
---mode "val" --split-size 1024 --stride 1024 \
---gt
-```
-As for the validation set, you can select some images from the training set to build it.
-
-**Potsdam**
-```
-python GeoSeg/tools/potsdam_patch_split.py \
---img-dir "data/potsdam/train_images" \
---mask-dir "data/potsdam/train_masks" \
---output-img-dir "data/potsdam/train/images_1024" \
---output-mask-dir "data/potsdam/train/masks_1024" \
---mode "train" --split-size 1024 --stride 1024 --rgb-image 
+```python
+from geoseg.pv import load_model, predict_proba
+model = load_model('ftunetformer_fom/fold0.safetensors', device='cuda')
+pv = predict_proba(model, rgb, device='cuda') >= 0.5  # rgb: uint8 array (H, W, 3)
 ```
 
-```
-python GeoSeg/tools/potsdam_patch_split.py \
---img-dir "data/potsdam/test_images" \
---mask-dir "data/potsdam/test_masks_eroded" \
---output-img-dir "data/potsdam/test/images_1024" \
---output-mask-dir "data/potsdam/test/masks_1024" \
---mode "val" --split-size 1024 --stride 1024 \
---eroded --rgb-image
+## Ground truth
+
+The ground truth has 80 tiles over Slovenia with individual modules annotated on Google satellite imagery (zoom level 20, downloaded in July 2023). It is published as masks only, together with the extent of every tile and a script that rebuilds the matching RGB patches (`get_rgb.py`, e.g. through the Google Maps Platform Map Tiles API with your own key). Zenodo: *DOI will be added*. Its README describes the format.
+
+The masks cover the central 512 × 512 pixels of each tile image after it was resized to 1024 × 1024, about 50 × 50 m on the ground at a GSD of 0.096 to 0.099 m. `splits.json` holds the five random train/val/test splits of 60/12/8 tiles used for the results above.
+
+## Example
+
+The example reproduces the result of FT-UNetFormer + FOM on the 8 test tiles of split 0.
+
+```bash
+python <ground_truth>/get_rgb.py google --key YOUR_KEY --fold 0 --part test --out example/images
+python example/run_example.py --gt <ground_truth> --images example/images -w <models>/ftunetformer_fom/fold0.safetensors
 ```
 
-```
-python GeoSeg/tools/potsdam_patch_split.py \
---img-dir "data/potsdam/test_images" \
---mask-dir "data/potsdam/test_masks" \
---output-img-dir "data/potsdam/test/images_1024" \
---output-mask-dir "data/potsdam/test/masks_1024_rgb" \
---mode "val" --split-size 1024 --stride 1024 \
---gt --rgb-image
-```
+It writes an error map per tile, [example/output/overview.png](example/output/overview.png) and [example/output/results.txt](example/output/results.txt) (F1 0.9585, IoU 0.9203 over the 8 tiles with the original imagery). The imagery Google serves today may be newer than the imagery the masks were drawn on, so your result can differ where roofs have changed.
 
-**UAVid**
-```
-python GeoSeg/tools/uavid_patch_split.py \
---input-dir "data/uavid/uavid_train_val" \
---output-img-dir "data/uavid/train_val/images" \
---output-mask-dir "data/uavid/train_val/masks" \
---mode 'train' --split-size-h 1024 --split-size-w 1024 \
---stride-h 1024 --stride-w 1024
-```
+## Training and testing
 
-```
-python GeoSeg/tools/uavid_patch_split.py \
---input-dir "data/uavid/uavid_train" \
---output-img-dir "data/uavid/train/images" \
---output-mask-dir "data/uavid/train/masks" \
---mode 'train' --split-size-h 1024 --split-size-w 1024 \
---stride-h 1024 --stride-w 1024
-```
+1. Rebuild the RGB patches of all tiles (`get_rgb.py`) and write the patches of the five splits:
+   ```bash
+   python tools/pv_patch_split.py --gt <ground_truth> --images <ground_truth>/images --out data/pv
+   ```
+   This gives `data/pv/fold<k>/{train,val,test}/{images_512,masks_512}`. The training tiles are added flipped horizontally and vertically, as in the paper.
+2. Train a configuration on split `k` (environment variable `PV_FOLD`, default 0):
+   ```bash
+   PV_FOLD=0 python train_supervision.py -c config/pv/ftunetformer_fom.py
+   ```
+   In PowerShell: `$env:PV_FOLD=0; python train_supervision.py -c config/pv/ftunetformer_fom.py`. All configurations use AdamW (learning rate 1e-4, weight decay 2.5e-4) with Lookahead, cosine annealing with warm restarts (T0 = 30 epochs), batch size 4, at most 200 epochs with early stopping after 20 epochs without improvement of the validation F1, and the joint soft cross-entropy and Dice loss (UNetFormer: with its auxiliary head). Checkpoints are written to `model_weights/pv/fold<k>/<config>/`.
+3. Test it:
+   ```bash
+   PV_FOLD=0 python pv_test.py -c config/pv/ftunetformer_fom.py -o fig_results/pv/ftunetformer_fom
+   python pv_test.py -w <models>/ftunetformer_fom/fold0.safetensors --data data/pv/fold0/test
+   ```
+   `--per-image` adds the scores of every tile, `-t lr` or `-t d4` test-time augmentation.
+4. Export the weights for `geoseg.pv.load_model`:
+   ```bash
+   python -m tools.pv_export model_weights/pv/fold0/ftunetformer_fom/ftunetformer_fom.ckpt ftunetformer_fom_fold0.safetensors --arch ftunetformer --fom
+   ```
 
-```
-python GeoSeg/tools/uavid_patch_split.py \
---input-dir "data/uavid/uavid_val" \
---output-img-dir "data/uavid/val/images" \
---output-mask-dir "data/uavid/val/masks" \
---mode 'val' --split-size-h 1024 --split-size-w 1024 \
---stride-h 1024 --stride-w 1024
-```
+## Changes to GeoSeg
 
-**LoveDA**
-```
-python GeoSeg/tools/loveda_mask_convert.py --mask-dir data/LoveDA/Train/Rural/masks_png --output-mask-dir data/LoveDA/Train/Rural/masks_png_convert
-python GeoSeg/tools/loveda_mask_convert.py --mask-dir data/LoveDA/Train/Urban/masks_png --output-mask-dir data/LoveDA/Train/Urban/masks_png_convert
-python GeoSeg/tools/loveda_mask_convert.py --mask-dir data/LoveDA/Val/Rural/masks_png --output-mask-dir data/LoveDA/Val/Rural/masks_png_convert
-python GeoSeg/tools/loveda_mask_convert.py --mask-dir data/LoveDA/Val/Urban/masks_png --output-mask-dir data/LoveDA/Val/Urban/masks_png_convert
-```
+| File | Change |
+|---|---|
+| `geoseg/models/FineOptimizationModule.py` | New: FOM |
+| `geoseg/models/{UNetFormer,FTUNetFormer,DCSwin,BANet,A2FPN,MANet}.py` | Optional FOM (`fom=True`); A2FPN can be built without ImageNet weights (`pretrained=False`) |
+| `geoseg/datasets/pv_dataset.py` | New: PV dataset (binary masks, PV = label 0) |
+| `geoseg/pv.py` | New: the 10 networks by name, loading of released weights, tiled prediction |
+| `config/pv/` | New: the 20 configurations |
+| `train_supervision.py` | PV metrics (PV class only), optional early stopping (`early_stopping_patience` in a config) |
+| `tools/metric.py` | F1 is 0 instead of NaN for a class that is never predicted |
+| `tools/utils.py` | `collections.abc.Mapping` (Python 3.10+) |
+| `tools/pv_patch_split.py`, `tools/pv_export.py`, `pv_test.py`, `pv_inference.py`, `example/` | New |
 
-## Training
+## Limitations
 
-"-c" means the path of the config, use different **config** to train different models.
-
-```
-python GeoSeg/train_supervision.py -c GeoSeg/config/uavid/unetformer.py
-```
-
-## Testing
-
-"-c" denotes the path of the config, Use different **config** to test different models. 
-
-"-o" denotes the output path 
-
-"-t" denotes the test time augmentation (TTA), can be [None, 'lr', 'd4'], default is None, 'lr' is flip TTA, 'd4' is multiscale TTA
-
-"--rgb" denotes whether to output masks in RGB format
-
-**Vaihingen**
-```
-python GeoSeg/vaihingen_test.py -c GeoSeg/config/vaihingen/dcswin.py -o fig_results/vaihingen/dcswin --rgb -t 'd4'
-```
-
-**Potsdam**
-```
-python GeoSeg/potsdam_test.py -c GeoSeg/config/potsdam/dcswin.py -o fig_results/potsdam/dcswin --rgb -t 'lr'
-```
-
-**LoveDA** ([Online Testing](https://codalab.lisn.upsaclay.fr/competitions/421))
-```
-python GeoSeg/loveda_test.py -c GeoSeg/config/loveda/dcswin.py -o fig_results/loveda/dcswin_test -t 'd4'
-```
-
-**UAVid** ([Online Testing](https://codalab.lisn.upsaclay.fr/competitions/7302))
-```
-python GeoSeg/inference_uavid.py \
--i 'data/uavid/uavid_test' \
--c GeoSeg/config/uavid/unetformer.py \
--o fig_results/uavid/unetformer_r18 \
--t 'lr' -ph 1152 -pw 1024 -b 2 -d "uavid"
-```
-
-## Inference on huge remote sensing image
-```
-python GeoSeg/inference_huge_image.py \
--i data/vaihingen/test_images \
--c GeoSeg/config/vaihingen/dcswin.py \
--o fig_results/vaihingen/dcswin_huge \
--t 'lr' -ph 512 -pw 512 -b 2 -d "pv"
-```
-
-<div>
-<img src="vai.png" width="30%"/>
-<img src="pot.png" width="35.5%"/>
-</div>
-
-## Reproduction Results
-|    Method     |  Dataset  |  F1   |  OA   |  mIoU |
-|:-------------:|:---------:|:-----:|:-----:|------:|
-|  UNetFormer   |   UAVid   |   -   |   -   | 67.63 |
-|  UNetFormer   | Vaihingen | 90.30 | 91.10 | 82.54 |
-|  UNetFormer   |  Potsdam  | 92.64 | 91.19 | 86.52 |
-|  UNetFormer   |  LoveDA   |   -   |   -   | 52.97 |
-| FT-UNetFormer | Vaihingen | 91.17 | 91.74 | 83.98 |
-| FT-UNetFormer |  Potsdam  | 93.22 | 91.87 | 87.50 |
-
-Due to some random operations in the training stage, reproduced results (run once) are slightly different from the reported in paper.
+- The training tiles cover 80 PV systems in Slovenia in Google imagery. Other imagery may need fine-tuning. On a 2022 aerial true orthophoto of Maribor, where the modules appear bright instead of dark, FT-UNetFormer + FOM detected no modules at all.
+- The masks annotate modules, not arrays or systems, and only the central part of each tile.
+- Skylights, glass roofs and other dark rectangular surfaces can be detected as PV, and modules with non-uniform colour can be partly missed (see Fig. 5 of the paper).
 
 ## Citation
 
-If you find this project useful in your research, please consider citing：
+If you use the code, the models or the ground truth, please cite:
 
-- [UNetFormer: A UNet-like transformer for efficient semantic segmentation of remote sensing urban scene imagery](https://authors.elsevier.com/a/1fIji3I9x1j9Fs)
-- [A Novel Transformer Based Semantic Segmentation Scheme for Fine-Resolution Remote Sensing Images](https://ieeexplore.ieee.org/abstract/document/9681903) 
-- [Transformer Meets Convolution: A Bilateral Awareness Network for Semantic Segmentation of Very Fine Resolution Urban Scene Images](https://www.mdpi.com/2072-4292/13/16/3065)
-- [ABCNet: Attentive Bilateral Contextual Network for Efficient Semantic Segmentation of Fine-Resolution Remote Sensing Images](https://www.sciencedirect.com/science/article/pii/S0924271621002379)
-- [Multiattention network for semantic segmentation of fine-resolution remote sensing images](https://ieeexplore.ieee.org/abstract/document/9487010)
-- [A2-FPN for semantic segmentation of fine-resolution remotely sensed images](https://www.tandfonline.com/doi/full/10.1080/01431161.2022.2030071)
+```bibtex
+@article{lukac2025pv,
+  author  = {Luka{\v{c}}, Niko and Seme, Sebastijan and Sreden{\v{s}}ek, Klemen and {\v{S}}tumberger, Gorazd and Mongus, Domen and {\v{Z}}alik, Borut and Bizjak, Marko},
+  title   = {Detection and Optimization of Photovoltaic Arrays' Tilt Angles Using Remote Sensing Data},
+  journal = {Applied Sciences},
+  volume  = {15},
+  number  = {7},
+  pages   = {3598},
+  year    = {2025},
+  doi     = {10.3390/app15073598}
+}
 
+@article{lukac2013rating,
+  author  = {Luka{\v{c}}, Niko and {\v{Z}}laus, Danijel and Seme, Sebastijan and {\v{Z}}alik, Borut and {\v{S}}tumberger, Gorazd},
+  title   = {Rating of roofs' surfaces regarding their solar potential and suitability for {PV} systems, based on {LiDAR} data},
+  journal = {Applied Energy},
+  volume  = {102},
+  pages   = {803--812},
+  year    = {2013},
+  doi     = {10.1016/j.apenergy.2012.08.042}
+}
+```
 
+Please also cite GeoSeg (L. Wang et al., UNetFormer: A UNet-like transformer for efficient semantic segmentation of remote sensing urban scene imagery, *ISPRS Journal of Photogrammetry and Remote Sensing* 190, 196–214, 2022, https://doi.org/10.1016/j.isprsjprs.2022.06.008) and the paper of the network you use. The FOM follows J. Wang et al., PVNet: A novel semantic segmentation model for extracting high-quality photovoltaic panels in large-scale systems from high-resolution remote sensing imagery, *International Journal of Applied Earth Observation and Geoinformation* 119, 103309, 2023.
 
-## Acknowledgement
+## Acknowledgements
 
-We wish **GeoSeg** could serve the growing research of remote sensing by providing a unified benchmark 
-and inspiring researchers to develop their own segmentation networks. Many thanks the following projects's contributions to **GeoSeg**.
-- [pytorch lightning](https://www.pytorchlightning.ai/)
-- [timm](https://github.com/rwightman/pytorch-image-models)
-- [pytorch-toolbelt](https://github.com/BloodAxe/pytorch-toolbelt)
-- [ttach](https://github.com/qubvel/ttach)
-- [catalyst](https://github.com/catalyst-team/catalyst)
-- [mmsegmentation](https://github.com/open-mmlab/mmsegmentation)
+This work was carried out at the University of Maribor, Faculty of Electrical Engineering and Computer Science, and funded by the Slovenian Research and Innovation Agency (ARIS): research project J7-50095 and research core funding P2-0041 and P2-0115. We thank Libo Wang for GeoSeg, and Google, Airbus, CNES/Airbus and Maxar Technologies for the satellite imagery.
+
+## License
+
+[GNU General Public License v3.0](LICENSE), as GeoSeg.

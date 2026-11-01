@@ -1,0 +1,7 @@
+__pycache__/
+data/
+model_weights/
+pretrain_weights/
+lightning_logs/
+fig_results/
+example/images/

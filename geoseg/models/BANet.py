@@ -10,6 +10,8 @@ from torch.nn import Module, Conv2d, Parameter, Softmax
 from torchvision import models
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
+from geoseg.models.FineOptimizationModule import FineOptimizationModule
+
 
 class Mlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
@@ -560,7 +562,7 @@ class DependencyPathRes(nn.Module):
 
 
 class BANet(nn.Module):
-    def __init__(self, num_classes=6, weight_path='pretrain_weights/rest_lite.pth'):
+    def __init__(self, num_classes=6, weight_path='pretrain_weights/rest_lite.pth', fom=False):
         super(BANet, self).__init__()    # path of pretrained weight file of ResT-lite  or None, recommend use.
         self.name = 'BANet'
 
@@ -569,6 +571,7 @@ class BANet(nn.Module):
         self.fam = FeatureAggregationModule(256, 256)
         self.conv_out = Output(256, 256, num_classes, up_factor=8)
         self.init_weight()
+        self.fom = FineOptimizationModule(input_channels=num_classes) if fom else None
 
     def forward(self, x):
         feat = self.cp(x)
@@ -576,6 +579,8 @@ class BANet(nn.Module):
         feat_fuse = self.fam(feat_sp, feat)
 
         feat_out = self.conv_out(feat_fuse)
+        if self.fom is not None:
+            feat_out = self.fom(feat_out)
 
         return feat_out
 
