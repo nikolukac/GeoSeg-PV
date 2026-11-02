@@ -29,7 +29,7 @@ All networks predict two classes (0 = PV, 1 = background) for 512 × 512 RGB pat
 
 The FOM adds 0.41 M parameters. The config of a network with FOM has the suffix `_fom` (e.g. `config/pv/ftunetformer_fom.py`).
 
-Released weights: 5 per configuration (one per split), as `<config>/fold<k>.safetensors`, for all configurations except MANet without FOM (\*: these values are from the paper, the weights were not kept). Every released file was re-evaluated and gives the published test result of its split. Hugging Face: *link will be added*.
+Released weights: 5 per configuration (one per split), as `<config>/fold<k>.safetensors`, for all configurations except MANet without FOM (\*: these values are from the paper, the weights were not kept). Every released file was re-evaluated and gives the published test result of its split. The weights are licensed under CC BY 4.0. Hugging Face: *link will be added*.
 
 ## Install
 
@@ -61,7 +61,7 @@ pv = predict_proba(model, rgb, device='cuda') >= 0.5  # rgb: uint8 array (H, W, 
 
 ## Ground truth
 
-The ground truth has 80 tiles over Slovenia with individual modules annotated on Google satellite imagery (zoom level 20, downloaded in July 2023). It is published as masks only, together with the extent of every tile and a script that rebuilds the matching RGB patches (`get_rgb.py`, e.g. through the Google Maps Platform Map Tiles API with your own key). Zenodo: *DOI will be added*. Its README describes the format.
+The ground truth has 80 tiles over Slovenia with individual modules annotated on Google satellite imagery (zoom level 20, downloaded in July 2023). It is published as masks only, together with the extent of every tile and a script that rebuilds the matching RGB patches (`get_rgb.py`, e.g. through the Google Maps Platform Map Tiles API with your own key). It is licensed under CC BY 4.0. Zenodo: *DOI will be added*. Its README describes the format.
 
 The masks cover the central 512 × 512 pixels of each tile image after it was resized to 1024 × 1024, about 50 × 50 m on the ground at a GSD of 0.096 to 0.099 m. `splits.json` holds the five random train/val/test splits of 60/12/8 tiles used for the results above.
 
@@ -154,4 +154,4 @@ This work was carried out at the University of Maribor, Faculty of Electrical En
 
 ## License
 
-[GNU General Public License v3.0](LICENSE), as GeoSeg.
+The code is licensed under the [GNU General Public License v3.0](LICENSE), as GeoSeg. The released weights and the ground truth are licensed separately under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
