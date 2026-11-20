@@ -99,7 +99,7 @@ It writes an error map per tile, [example/output/overview.png](example/output/ov
    python -m tools.pv_export model_weights/pv/fold0/ftunetformer_fom/ftunetformer_fom.ckpt ftunetformer_fom_fold0.safetensors --arch ftunetformer --fom
    ```
 
-## Changes to GeoSeg
+## Changes to original GeoSeg
 
 | File | Change |
 |---|---|
@@ -112,12 +112,6 @@ It writes an error map per tile, [example/output/overview.png](example/output/ov
 | `tools/metric.py` | F1 is 0 instead of NaN for a class that is never predicted |
 | `tools/utils.py` | `collections.abc.Mapping` (Python 3.10+) |
 | `tools/pv_patch_split.py`, `tools/pv_export.py`, `pv_test.py`, `pv_inference.py`, `example/` | New |
-
-## Limitations
-
-- The training tiles cover 80 PV systems in Slovenia in Google imagery. Other imagery may need fine-tuning. On a 2022 aerial true orthophoto of Maribor, where the modules appear bright instead of dark, FT-UNetFormer + FOM detected no modules at all.
-- The masks annotate modules, not arrays or systems, and only the central part of each tile.
-- Skylights, glass roofs and other dark rectangular surfaces can be detected as PV, and modules with non-uniform colour can be partly missed (see Fig. 5 of the paper).
 
 ## Citation
 
