@@ -29,7 +29,9 @@ All networks predict two classes (0 = PV, 1 = background) for 512 × 512 RGB pat
 
 The FOM adds 0.41 M parameters. The config of a network with FOM has the suffix `_fom` (e.g. `config/pv/ftunetformer_fom.py`).
 
-Released weights: 5 per configuration (one per split), as `<config>/fold<k>.safetensors`, for all configurations except MANet without FOM (\*: these values are from the paper, the weights were not kept). Every released file was re-evaluated and gives the published test result of its split. The weights are licensed under CC BY 4.0. Hugging Face: [nikolukac/GeoSeg-PV-models](https://huggingface.co/nikolukac/GeoSeg-PV-models).
+Released weights: 5 per configuration (one per split), as `<config>/fold<k>.safetensors`, for all configurations except MANet without FOM (\*: these values are from the paper, the weights were not kept). Every released file was re-evaluated and gives the published test result of its split. The weights are licensed under CC BY 4.0. 
+
+Trained models on Hugging Face: [GeoSeg-PV-Models](https://huggingface.co/nikolukac/GeoSeg-PV-models)
 
 ## Install
 
@@ -61,7 +63,9 @@ pv = predict_proba(model, rgb, device='cuda') >= 0.5  # rgb: uint8 array (H, W, 
 
 ## Ground truth
 
-The ground truth has 80 tiles over Slovenia with individual modules annotated on Google satellite imagery (zoom level 20, downloaded in July 2023). It is published as masks only, together with the extent of every tile and a script that rebuilds the matching RGB patches (`get_rgb.py`, e.g. through the Google Maps Platform Map Tiles API with your own key). It is licensed under CC BY 4.0. Zenodo: [doi:10.5281/zenodo.24404853](https://doi.org/10.5281/zenodo.24404853). Its README describes the format.
+The ground truth has 80 tiles over Slovenia with individual modules annotated on Google satellite imagery (zoom level 20, downloaded in July 2023). It is published as masks only, together with the extent of every tile and a script that rebuilds the matching RGB patches (`get_rgb.py`, e.g. through the Google Maps Platform Map Tiles API with your own key). It is licensed under CC BY 4.0. 
+
+Zenodo: [doi:10.5281/zenodo.24404853](https://doi.org/10.5281/zenodo.24404853)
 
 The masks cover the central 512 × 512 pixels of each tile image after it was resized to 1024 × 1024, about 50 × 50 m on the ground at a GSD of 0.096 to 0.099 m. `splits.json` holds the five random train/val/test splits of 60/12/8 tiles used for the results above.
 
