@@ -6,9 +6,9 @@ GeoSeg-PV is a fork of [GeoSeg](https://github.com/WangLibo1995/GeoSeg) by Libo 
 
 > N. Lukač, S. Seme, K. Sredenšek, G. Štumberger, D. Mongus, B. Žalik, M. Bizjak. **Detection and Optimization of Photovoltaic Arrays' Tilt Angles Using Remote Sensing Data.** *Applied Sciences* 15(7), 3598, 2025. https://doi.org/10.3390/app15073598
 
-![Errors of FT-UNetFormer + FOM on the 8 test tiles of split 0](example/output/overview.png)
+![PV modules detected by FT-UNetFormer + FOM (orange) on the 8 test tiles of split 0](example/output/overlay.png)
 
-*FT-UNetFormer + FOM on the test tiles of split 0 (white: detected PV, magenta: false detections, cyan: missed PV). The imagery is not shown because it may not be redistributed. See [Example](#example).*
+*PV modules detected by FT-UNetFormer + FOM (orange) on the 8 test tiles of split 0, with the F1 of each tile. Imagery © 2023 Google, Airbus, CNES/Airbus, Maxar Technologies. The imagery itself is not redistributed. See [Example](#example).*
 
 ## Models
 
@@ -71,10 +71,14 @@ The example reproduces the result of FT-UNetFormer + FOM on the 8 test tiles of 
 
 ```bash
 python <ground_truth>/get_rgb.py google --key YOUR_KEY --fold 0 --part test --out example/images
-python example/run_example.py --gt <ground_truth> --images example/images -w <models>/ftunetformer_fom/fold0.safetensors
+python example/run_example.py --gt <ground_truth> --images example/images -w <models>/ftunetformer_fom/fold0.safetensors --overlay
 ```
 
-It writes an error map per tile, [example/output/overview.png](example/output/overview.png) and [example/output/results.txt](example/output/results.txt) (F1 0.9585, IoU 0.9203 over the 8 tiles with the original imagery). The imagery Google serves today may be newer than the imagery the masks were drawn on, so your result can differ where roofs have changed.
+It writes an error map per tile, [example/output/overview.png](example/output/overview.png) and [example/output/results.txt](example/output/results.txt) (F1 0.9585, IoU 0.9203 over the 8 tiles with the original imagery). With `--overlay` it also writes [example/output/overlay.png](example/output/overlay.png), the figure at the top. The imagery Google serves today may be newer than the imagery the masks were drawn on, so your result can differ where roofs have changed.
+
+![Errors of FT-UNetFormer + FOM on the 8 test tiles of split 0](example/output/overview.png)
+
+*Errors of FT-UNetFormer + FOM on the same tiles: white = detected PV, magenta = false detections, cyan = missed PV.*
 
 ## Training and testing
 
