@@ -29,7 +29,7 @@ All networks predict two classes (0 = PV, 1 = background) for 512 × 512 RGB pat
 
 The FOM adds 0.41 M parameters. The config of a network with FOM has the suffix `_fom` (e.g. `config/pv/ftunetformer_fom.py`).
 
-Released weights: 5 per configuration (one per split), as `<config>/fold<k>.safetensors`, for all configurations except MANet without FOM (\*: these values are from the paper, the weights were not kept). Every released file was re-evaluated and gives the published test result of its split. The weights are licensed under CC BY 4.0. Hugging Face: *link will be added*.
+Released weights: 5 per configuration (one per split), as `<config>/fold<k>.safetensors`, for all configurations except MANet without FOM (\*: these values are from the paper, the weights were not kept). Every released file was re-evaluated and gives the published test result of its split. The weights are licensed under CC BY 4.0. Hugging Face: [nikolukac/GeoSeg-PV-models](https://huggingface.co/nikolukac/GeoSeg-PV-models).
 
 ## Install
 
